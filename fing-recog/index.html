@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finger Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            height: 100vh;
+            margin: 0;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+        }
+        
+        video,
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: block;
+            width: 500px;
+            height: 400px;
+        }
+        
+        #di {
+            margin-top: 20px;
+            margin-left: 160px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="di">
+
+
+    </div>
+    <h4>finger - detection </h4>
+    <!--   <h1>Finger Detection</h1> -->
+    <video id="video" autoplay></video>
+    <canvas id="output" width="640" height="480"></canvas>
+    <script>
+        const di = document.getElementById("di");
+        const videoElement = document.getElementById('video');
+        const canvasElement = document.getElementById('output');
+        const canvasCtx = canvasElement.getContext('2d');
+
+        // Load the MediaPipe Hands model
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+        });
+
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+        });
+
+        // Setup camera feed
+        const camera = new Camera(videoElement, {
+            onFrame: async() => {
+                await hands.send({
+                    image: videoElement
+                });
+            },
+            width: 640,
+            height: 480,
+        });
+        camera.start();
+
+        // Process hand landmarks
+        hands.onResults((results) => {
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(
+                results.image,
+                0,
+                0,
+                canvasElement.width,
+                canvasElement.height
+            );
+
+            if (results.multiHandLandmarks) {
+                for (const landmarks of results.multiHandLandmarks) {
+                    // Draw landmarks
+                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+                        color: '#00FF00',
+                        lineWidth: 4,
+                    });
+                    drawLandmarks(canvasCtx, landmarks, {
+                        color: '#FF0000',
+                        lineWidth: 2,
+                    });
+
+                    // Detect fingers based on landmarks
+                    detectFingers(landmarks);
+                }
+            }
+        });
+
+        // Detect fingers
+        function detectFingers(landmarks) {
+            const fingerTips = [4, 8, 12, 16, 20]; // Indices of fingertip landmarks
+            const palmBase = landmarks[0]; // Palm base landmark
+
+            fingerTips.forEach((tipIndex, i) => {
+                const tip = landmarks[tipIndex];
+                const base = landmarks[tipIndex - 2];
+
+                // Compare y-coordinates to determine if the finger is up
+                if (tip.y < base.y) {
+                    // console.log(`Finger ${i + 1} is up!`);
+                    di.style.backgroundImage = "url('pic_bulbon.gif')";
+                    di.style.backgroundSize = "contain";
+                    // di.style.display="block";
+                    di.style.width = "400px";
+                    di.style.height = "400px";
+                    di.style.backgroundRepeat = "no-repeat";
+                    // di.style.borderRadius="50%";
+                    // alert(" up ");
+                    //   alert("finger is up");
+                } else {
+                    console.log(`Finger ${i + 1} is down.`);
+                    // di.style.display="none";
+                    di.style.width = "400px";
+                    di.style.height = "400px";
+                    // di.style.borderRadius="50%";
+                    di.style.backgroundImage = "url('pic_bulboff.gif')";
+                    di.style.backgroundSize = "contain";
+                    di.style.backgroundRepeat = "no-repeat";
+
+                    //   alert("finger is down");
+                    // alert("down");
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
